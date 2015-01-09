@@ -511,7 +511,9 @@ class ProcessMigrator extends Process implements Module {
         //$packages = json_decode(file_get_contents('https://raw.github.com/adrianbj/ProcessWirePageLists/master/packages.json'));
         $options  = array('http' => array('user_agent' => 'adrianbj'));
         $context  = stream_context_create($options);
-        $packages = json_decode(file_get_contents('https://api.github.com/repos/adrianbj/ProcessWirePageLists/contents/', false, $context));
+        // $packages = json_decode(file_get_contents('https://api.github.com/repos/adrianbj/ProcessWirePageLists/contents/', false, $context));
+        //behind a Firewall this suffices for my test
+        $packages=json_decode(file_get_contents(dirname(__FILE__)."/github.json"));
         if(!is_array($packages)) {
             $this->error("Github rate limit has been exceeded. Please try again shortly.");
             $f->description = __("Github rate limit has been exceeded. Please try again shortly.");
@@ -1479,6 +1481,39 @@ class ProcessMigrator extends Process implements Module {
                                         }
                                     }
                                 }
+                                    
+                                elseif($wp->fields->get($np_field_name) && $wp->fields->get($np_field_name)->type == 'FieldtypeComments'){
+                                    //This should save all the comments to the pages
+                                     //Get the comment field
+                                        $field=$wp->fields->get($np_field_name);    
+                                        
+                                            if(is_array($np_field_value)){
+                                            //This iterates over the array of comments
+                                              foreach($np_field_value as $comments){ 
+                                                  
+                                                  $commentInstance=new Comment(); 
+                                                  $commentInstance->id=$comments->id;
+                                                  $commentInstance->status=($comments->status) ? $comments->status : Comment::statusPending;
+                                                  $commentInstance->text=$comments->data;
+                                                  $commentInstance->cite=$comments->cite;
+                                                  $commentInstance->email=$comments->email;
+                                                  $commentInstance->ip=$comments->ip;
+                                                  $commentInstance->website=$comments->website;
+                                                  $commentInstance->parent_id=$comments->parent_id;
+                                                  $commentInstance->setPage($wp);
+                                                  
+                                                 
+                                                  $wp->of(false);
+                                                 
+                                                  $wp->{$np_field_name}->add($commentInstance);
+                                                  $wp->save($np_field_name);
+                                                 
+
+                                             }
+                                            }    
+                                 }
+                             
+                                
                                 elseif($wp->fields->get($np_field_name) && $wp->fields->get($np_field_name)->type == 'FieldtypePage'){ // this is for page fields
                                     // these were breaking page fields and not needed because all of this is taken care of in the next loop further down
                                     // need to grab the first (and only item) from the return array if the page field is a single type
